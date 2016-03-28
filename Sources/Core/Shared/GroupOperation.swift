@@ -22,6 +22,11 @@ of creating Operations which may repeat themselves before
 subsequent operations can run. For example, authentication
 operations.
 */
+
+enum GroupOperationError: ErrorType {
+    case ParentGroupCancelledWithErrors([ErrorType])
+}
+
 public class GroupOperation: Operation {
 
     private let finishingOperation = NSBlockOperation { }
@@ -57,7 +62,13 @@ public class GroupOperation: Operation {
     public override func cancel() {
         queue.cancelAllOperations()
         queue.suspended = false
-        operations.forEach { $0.cancel() }
+        operations.forEach {
+            if let op = $0 as? Operation {
+                op.cancelWithError(GroupOperationError.ParentGroupCancelledWithErrors(aggregateErrors))
+            } else {
+                $0.cancel()
+            }
+        }
         super.cancel()
     }
 
